@@ -5,16 +5,17 @@ from gpio_mgmt import GpioMgmt
 from infrared import Infrared
 from motor import Motor
 from headlight import HeadLight
+from settings import logging
 
 
-#设置GPIO口为BCM编码方式
+# 设置GPIO口为BCM编码方式
 GPIO.setmode(GPIO.BCM)
-#忽略警告信息
+# 忽略警告信息
 GPIO.setwarnings(False)
-#超声波引脚定义
+# 超声波引脚定义
 EchoPin = 0
 TrigPin = 1
-#舵机引脚定义
+# 舵机引脚定义
 ServoPin = 23
 
 
@@ -49,9 +50,9 @@ class Ultrasonic(object):
         """
         self.pwm_servo = GPIO.PWM(ServoPin, 50)
         self.pwm_servo.start(0)
-    
+
     def init_infrared(self):
-        self.infrared = Infrared() 
+        self.infrared = Infrared()
 
     def init_headlight(self):
         self.headlight = HeadLight()
@@ -100,7 +101,7 @@ class Ultrasonic(object):
         self.servo_steer(0)
         time.sleep(0.8)
         right_distance = self.detect_distance()
-        print("[INFO] Ultrasonic detecting ... \nRight distance is %d " % right_distance)
+        logging.info("Ultrasonic detecting ... \nRight distance: %d " % right_distance)
         return right_distance
 
     def detect_left_distance(self):
@@ -108,7 +109,7 @@ class Ultrasonic(object):
         self.servo_steer(180)
         time.sleep(0.8)
         left_distance = self.detect_distance()
-        print("[INFO] Ultrasonic detecting ... \nLeft distance is %d " % left_distance)
+        logging.info("Ultrasonic detecting ... \nLeft distance: %d " % left_distance)
         return left_distance
 
     def detect_front_distance(self):
@@ -116,7 +117,7 @@ class Ultrasonic(object):
         self.servo_steer(90)
         time.sleep(0.8)
         front_distance = self.detect_distance()
-        print("[INFO] Ultrasonic detecting ... \nFront distance is %d " % front_distance)
+        logging.info("Ultrasonic detecting ... \nFront distance: %d " % front_distance)
         return front_distance
 
     def servo_detect_to_turn_car(self):
@@ -128,46 +129,54 @@ class Ultrasonic(object):
         left_distance = self.detect_left_distance()
         front_distance = self.detect_front_distance()
 
+        self.motor.aquire()
         if left_distance < 30 and right_distance < 30 and front_distance < 30:
-            #亮品红色，掉头
+            # 亮品红色，掉头
             self.headlight.magenta()
-            self.motor.spin_right(left_speed=60, right_speed=60)
-            time.sleep(0.004)
+            self.motor.spin_right(0.1, left_speed=60, right_speed=60)
+            time.sleep(0.01)
         elif left_distance >= right_distance:
-            #亮蓝色, 向左转
+            # 亮蓝色, 向左转
             self.headlight.yellow()
-            self.motor.spin_left(left_speed=60, right_speed=60)
-            time.sleep(0.004)
+            self.motor.spin_left(0.1, left_speed=60, right_speed=60)
+            time.sleep(0.01)
         elif left_distance <= right_distance:
-            #亮品红色，向右转
+            # 亮品红色，向右转
             self.headlight.yellow()
-            self.motor.spin_right(left_speed=60, right_speed=60)
-            time.sleep(0.004)
-    
+            self.motor.spin_right(0.1, left_speed=60, right_speed=60)
+            time.sleep(0.01)
+        self.motor.release()
+
     def detect_to_turn_car(self):
+        block = True
         front_distance = self.detect_front_distance()
 
-        if front_distance > 50:
-            self.infrared.detect_to_turn_car()
-            if self.motor.lock:
-                self.motor.run(left_speed=100, right_speed=100)
-                time.sleep(0.002)
-        elif 30 <= front_distance <= 50:
-            self.infrared.detect_to_turn_car()
-            if self.motor.lock:
-                self.motor.run(left_speed=60, right_speed=60)
-                time.sleep(0.002)
-
+        if front_distance >= 30:
+            block = self.infrared.detect_to_turn_car()
         elif front_distance < 30:
             self.servo_detect_to_turn_car()
-            
+
         self.motor.free()
+        time.sleep(0.1)
+        return block
+
+    def detect(self):
+        left_distance = None
+        right_distance = None
+        front_distance = self.detect_front_distance()
+        if front_distance < 50:
+            right_distance = self.detect_right_distance()
+            left_distance = self.detect_left_distance()
+            # front_distance = self.detect_front_distance()
+        time.sleep(0.1)
+        return front_distance, left_distance, right_distance
 
 
 if __name__ == '__main__':
     us = Ultrasonic()
     GpioMgmt().init_pwm()
+    us.init_pwm()
     while True:
-        us.motor.lock = True
+        us.motor.aquire()
         us.detect_to_turn_car()
         time.sleep(1)

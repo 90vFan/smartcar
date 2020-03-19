@@ -2,11 +2,12 @@ import RPi.GPIO as GPIO
 import time
 
 from gpio_mgmt import GpioMgmt
+from settings import logging
 
 
-#设置GPIO口为BCM编码方式
+# 设置GPIO口为BCM编码方式
 GPIO.setmode(GPIO.BCM)
-#忽略警告信息
+# 忽略警告信息
 GPIO.setwarnings(False)
 #RGB三色灯引脚定义
 LED_R = 22
@@ -27,7 +28,7 @@ class HeadLight(object):
         GPIO.setup(LED_R, GPIO.OUT)
         GPIO.setup(LED_G, GPIO.OUT)
         GPIO.setup(LED_B, GPIO.OUT)
-    
+
     def off(self):
         self._apply(LOW, LOW, LOW)
 

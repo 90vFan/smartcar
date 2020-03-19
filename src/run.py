@@ -2,6 +2,7 @@ import argparse
 
 from gpio_mgmt import GpioMgmt
 from key_pilot import KeyPilot
+from settings import logging
 
 
 parser = argparse.ArgumentParser()
@@ -16,5 +17,5 @@ try:
         kp = KeyPilot()
         kp.run()
 except Exception as e:
-    print(f'[ERROR] fail to run in key mode: {e}')
+    logging.error(f'[ERROR] fail to run in key mode: {e}')
     GpioMgmt().release()

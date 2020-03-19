@@ -11,21 +11,25 @@ from headlight import HeadLight
 from settings import logging
 
 
-# 设置GPIO口为BCM编码方式
-GPIO.setmode(GPIO.BCM)
-# 忽略警告信息
-GPIO.setwarnings(False)
+# # 设置GPIO口为BCM编码方式
+# GPIO.setmode(GPIO.BCM)
+# # 忽略警告信息
+# GPIO.setwarnings(False)
+
+class DotDict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
 
-class KeyPilot(object):
-    """
-    Control smart car with Keyboard input
-    """
+class AutoPilot(object):
     def __init__(self):
         self.init_motor()
         self.init_infrared()
         self.init_ultrasonic()
         self.init_headlight()
+        self.sens = DotDict({})
 
     def init_motor(self):
         self.motor = Motor()
@@ -39,21 +43,62 @@ class KeyPilot(object):
     def init_ultrasonic(self):
         self.ultrasonic = Ultrasonic()
 
-    def detect_to_turn(self):
-        self.motor.aquire()
-        block = self.ultrasonic.detect_to_turn_car()
-        self.motor.release()
+    def infrared_detect(self):
+        left_sensor, right_sensor = self.infrared.detect()
+        self.sens.infrared = DotDict({
+            'left': left_sensor,
+            'right': right_sensor
+        })
+
+    def ultrasonic_detect(self):
+        front_distance, left_distance, right_distance = self.ultrasonic.detect()
+        self.sens.distance = DotDict({
+            'front': front_distance,
+            'left': left_distance,
+            'right': right_distance
+        })
+
+    def detect(self):
+        self.ultrasonic_detect()
+        self.infrared_detect()
+
+    def _pilot(self):
+        block = True
+        self.detect()
+        if self.sens.distance.front > 50:
+            infrared_block = self.infrared_detect_to_turn_car()
+            if not infrared_block:
+                block = False
+                self.motor.run(0.1)
+                time.sleep((self.sens.distance.front - 50) / 500)
+                logging.debug('Run forward   ^')
+        elif 20 <= self.sens.distance.front <= 50:
+            self.infrared_detect_to_turn_car()
+        elif self.sens.distance.front < 20:
+            self.turn_back()
+
+        self.motor.free()
         return block
+
+    def infrared_detect_to_turn_car(self):
+        infrared_block = True
+        if self.sens.infrared.left is True and self.sens.infrared.right is False:
+            self.turn_right()
+        elif self.sens.infrared.left is False and self.sens.infrared.right is True:
+            self.turn_left()
+        elif self.sens.infrared.left is False and self.sens.infrared.right is False:
+            self.turn_back()
+        else:
+            infrared_block = False
+
+        return infrared_block
 
     def _on_press(self, key):
         logging.debug(f'Press {key}')
-        block = self.detect_to_turn()
-
-        # if self.motor.lock:
-        #     pass
-        # if block:
-        #     pass
-        # else:
+        if key == Key.space:
+            self.motor.brake()
+        elif key == Key.ctrl:
+            self._pilot()
         if key == Key.up:
             logging.debug('Run forward   ^')
             self.motor.run(0.1)
@@ -72,18 +117,12 @@ class KeyPilot(object):
         elif key == KeyCode(char='e'):
             logging.debug('Spin right     ->')
             self.motor.spin_right(0.1)
-        elif key == Key.space:
-            logging.debug('Brake          X')
-            self.motor.brake(0.1)
         else:
             time.sleep(0.1)
 
     def _on_release(self, key):
-        logging.debug(f'Press {key}')
-        # if self.motor.lock:
-        #     pass
-        # else:
-        self.motor.free()
+        if key != Key.ctrl:
+            self.motor.free()
         time.sleep(0.1)
 
     def listen(self, *args, **kwargs):
@@ -106,17 +145,19 @@ class KeyPilot(object):
             # clientSocket.close()
             raise e
 
+    def _run(self):
+        self.listen()
+
     def run(self):
         try:
             GpioMgmt().init_pwm()
             self.ultrasonic.init_pwm()
-            self.detect_to_turn()
-            self.listen()
+            self._run()
         except Exception as e:
             GpioMgmt().init_pin()
             logging.error(str(e))
 
 
-if __name__ == "__main__":
-    kp = KeyPilot()
-    kp.run()
+if __name__ == '__main__':
+    auto = AutoPilot()
+    auto.run()
