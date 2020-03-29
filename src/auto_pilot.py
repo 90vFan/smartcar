@@ -2,19 +2,21 @@ import RPi.GPIO as GPIO
 from pynput.keyboard import Key, KeyCode, Listener
 import time
 import os
+import numpy as np
 
 from gpio_mgmt import GpioMgmt
 from motor import Motor
+from camera import Camera
 from infrared import Infrared
 from ultrasonic import Ultrasonic
 from headlight import HeadLight
 from settings import logging
 
 
-# # 设置GPIO口为BCM编码方式
-# GPIO.setmode(GPIO.BCM)
-# # 忽略警告信息
-# GPIO.setwarnings(False)
+# 设置GPIO口为BCM编码方式
+GPIO.setmode(GPIO.BCM)
+# 忽略警告信息
+GPIO.setwarnings(False)
 
 class DotDict(dict):
     """dot.notation access to dictionary attributes"""
@@ -26,13 +28,17 @@ class DotDict(dict):
 class AutoPilot(object):
     def __init__(self):
         self.init_motor()
-        self.init_infrared()
-        self.init_ultrasonic()
+        self.init_camera()
+        # self.init_infrared()
+        # self.init_ultrasonic()
         self.init_headlight()
         self.sens = DotDict({})
 
     def init_motor(self):
         self.motor = Motor()
+
+    def init_camera(self):
+        self.camera = Camera()
 
     def init_infrared(self):
         self.infrared = Infrared()
@@ -43,121 +49,64 @@ class AutoPilot(object):
     def init_ultrasonic(self):
         self.ultrasonic = Ultrasonic()
 
-    def infrared_detect(self):
-        left_sensor, right_sensor = self.infrared.detect()
-        self.sens.infrared = DotDict({
-            'left': left_sensor,
-            'right': right_sensor
-        })
-
-    def ultrasonic_detect(self):
-        front_distance, left_distance, right_distance = self.ultrasonic.detect()
-        self.sens.distance = DotDict({
-            'front': front_distance,
-            'left': left_distance,
-            'right': right_distance
-        })
-
-    def detect(self):
-        self.ultrasonic_detect()
-        self.infrared_detect()
-
-    def _pilot(self):
-        block = True
-        self.detect()
-        if self.sens.distance.front > 50:
-            infrared_block = self.infrared_detect_to_turn_car()
-            if not infrared_block:
-                block = False
-                self.motor.run(0.1)
-                time.sleep((self.sens.distance.front - 50) / 500)
-                logging.debug('Run forward   ^')
-        elif 20 <= self.sens.distance.front <= 50:
-            self.infrared_detect_to_turn_car()
-        elif self.sens.distance.front < 20:
-            self.turn_back()
-
-        self.motor.free()
-        return block
-
-    def infrared_detect_to_turn_car(self):
-        infrared_block = True
-        if self.sens.infrared.left is True and self.sens.infrared.right is False:
-            self.turn_right()
-        elif self.sens.infrared.left is False and self.sens.infrared.right is True:
-            self.turn_left()
-        elif self.sens.infrared.left is False and self.sens.infrared.right is False:
-            self.turn_back()
-        else:
-            infrared_block = False
-
-        return infrared_block
-
-    def _on_press(self, key):
-        logging.debug(f'Press {key}')
-        if key == Key.space:
-            self.motor.brake()
-        elif key == Key.ctrl:
-            self._pilot()
-        if key == Key.up:
-            logging.debug('Run forward   ^')
-            self.motor.run(0.1)
-        elif key == Key.down:
-            logging.debug('Run backward  _')
-            self.motor.back(0.1)
-        elif key == Key.left:
-            logging.debug('Run left      <-')
-            self.motor.left(0.1)
-        elif key == Key.right:
-            logging.debug('Run right     ->')
-            self.motor.right(0.1)
-        elif key == KeyCode(char='q'):
-            logging.debug('Spin left      <-')
-            self.motor.spin_left(0.1)
-        elif key == KeyCode(char='e'):
-            logging.debug('Spin right     ->')
-            self.motor.spin_right(0.1)
-        else:
-            time.sleep(0.1)
-
-    def _on_release(self, key):
-        if key != Key.ctrl:
-            self.motor.free()
+    def _pilot(self, deviation):
+        if -5 <= deviation <= 5:
+            self.motor.run(0, 25, 25)
+        elif -5 <= deviation < -10:
+           self.motor.left(0, right_speed=10)
+        elif -20 <= deviation < -10:
+            self.motor.left(0, right_speed=20)
+        elif deviation < -20:
+            self.motor.left(0, right_speed=30)
+        elif 5 < deviation <= 10:
+           self.motor.right(0, left_speed=10)
+        elif 10 < deviation <= 20:
+            self.motor.right(0, left_speed=20)
+        elif 20 < deviation:
+            self.motor.right(0, left_speed=30)
+        time.sleep(0.05)
+        self.motor.run(0, 25, 25)
         time.sleep(0.1)
-
-    def listen(self, *args, **kwargs):
-        '''
-        Function to control the bot using threading. Define the clientSocket in the module before use
-        '''
-        try:
-            with Listener(on_press=self._on_press, on_release=self._on_release) as listener:
-                listener.join()
-        except KeyboardInterrupt:
-            GpioMgmt().release()
-            self.headlight.off()
-            logging.info("[+] Exiting")
-            # clientSocket.close()
-            raise e
-        except Exception as e:
-            GpioMgmt().release()
-            self.headlight.off()
-            logging.error(str(e))
-            # clientSocket.close()
-            raise e
+        self.motor.free()
 
     def _run(self):
-        self.listen()
+        debug = 0
+        counter = 0
+        dev_cache = []
+        while self.camera.cap.isOpened():
+
+            counter += 1;
+            try:
+                deviation = self.camera.analyze()
+
+                dev_cache.append(deviation)
+                if counter >= 5:
+                    avg_deviation = (sum(dev_cache) - max(dev_cache) - min(dev_cache))/ 3
+                    logging.debug(f'avg_deviation: {avg_deviation}')
+                    self._pilot(avg_deviation)
+                    counter = 0
+                    dev_cache = []
+            except KeyboardInterrupt as e:
+                time.sleep(5)
+                counter = 0
+                dev_cache = []
+                continue
 
     def run(self):
         try:
+            logging.debug('Start smartcar in mode auto_pilot with camera ...')
             GpioMgmt().init_pwm()
-            self.ultrasonic.init_pwm()
+            # self.ultrasonic.init_pwm()
             self._run()
+        #except KeyboardInterrupt as e:
+        #    GpioMgmt().release()
+        #    logging.info("[+] Exiting")
+        #    raise e
         except Exception as e:
             GpioMgmt().init_pin()
             logging.error(str(e))
 
 
-if __name__ == '__main__':
-    auto = AutoPilot()
-    auto.run()
+if __name__ == "__main__":
+    ap = AutoPilot()
+    ap.run()

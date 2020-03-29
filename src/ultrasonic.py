@@ -57,7 +57,7 @@ class Ultrasonic(object):
     def init_headlight(self):
         self.headlight = HeadLight()
 
-    def detect_distance(self):
+    def _detect_distance(self):
         """
         超声波函数
         TrigPin 输入至少10us的高电平信号
@@ -87,6 +87,17 @@ class Ultrasonic(object):
         #                               * 100 (cm)
         distance = ((t2 - t1) * 340 / 2) * 100
         time.sleep(0.01)
+        return int(distance)
+
+    def detect_distance(self):
+        dist_list = []
+        for _ in range(5):
+            dist = self._detect_distance()
+            if dist >= 500 or dist == 0:
+                dist = self._detect_distance()
+            dist_list.append(dist)
+        distance_list = sorted(dist_list)
+        distance = sum(distance_list[0:3]) / 3
         return distance
 
     def servo_steer(self, pos):
@@ -168,6 +179,7 @@ class Ultrasonic(object):
             right_distance = self.detect_right_distance()
             left_distance = self.detect_left_distance()
             # front_distance = self.detect_front_distance()
+            self.servo_steer(90)
         time.sleep(0.1)
         return front_distance, left_distance, right_distance
 

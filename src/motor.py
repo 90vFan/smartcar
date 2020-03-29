@@ -11,12 +11,12 @@ GPIO.setmode(GPIO.BCM)
 # 忽略警告信息
 GPIO.setwarnings(False)
 
-IN1 = 20
-IN2 = 21
-IN3 = 19
-IN4 = 26
-ENA = 16
-ENB = 13
+IN1 = 20    # 左电机前
+IN2 = 21    # 左电机后
+IN3 = 19    # 右电机前
+IN4 = 26    # 右电机后
+ENA = 16    # 左电机转速PWM
+ENB = 13    # 右电机转速PWM
 
 def auto_privilege(func):
     """
@@ -72,7 +72,7 @@ class Motor(object):
 
     #小车前进
     @auto_privilege
-    def run(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def run(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Run forward')
         self.headlight.green()
         GPIO.output(IN1, GPIO.HIGH)
@@ -85,7 +85,7 @@ class Motor(object):
 
     #小车后退
     @auto_privilege
-    def back(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def back(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Run backward')
         self.headlight.magenta()
         GPIO.output(IN1, GPIO.LOW)
@@ -98,7 +98,7 @@ class Motor(object):
 
     #小车左转
     @auto_privilege
-    def left(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def left(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Run left')
         self.headlight.yellow()
         GPIO.output(IN1, GPIO.LOW)
@@ -111,7 +111,7 @@ class Motor(object):
 
     #小车右转
     @auto_privilege
-    def right(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def right(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Run right')
         self.headlight.yellow()
         GPIO.output(IN1, GPIO.HIGH)
@@ -124,7 +124,7 @@ class Motor(object):
 
     #小车原地左转
     @auto_privilege
-    def spin_left(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def spin_left(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Spin left')
         GPIO.output(IN1, GPIO.LOW)
         GPIO.output(IN2, GPIO.HIGH)
@@ -136,7 +136,7 @@ class Motor(object):
 
     #小车原地右转
     @auto_privilege
-    def spin_right(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def spin_right(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Spin right')
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
@@ -148,7 +148,7 @@ class Motor(object):
 
     #小车停止
     @auto_privilege
-    def brake(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def brake(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] Brake')
         self.headlight.red()
         GPIO.output(IN1, GPIO.LOW)
@@ -161,7 +161,7 @@ class Motor(object):
 
     #小车自由停车
     @auto_privilege
-    def free(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def free(self, delaytime=0.1, left_speed=65, right_speed=65, force=False):
         logging.debug('[Motor] free')
         self.headlight.blue()
         GPIO.output(IN1, GPIO.LOW)
