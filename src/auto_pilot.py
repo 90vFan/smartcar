@@ -51,22 +51,19 @@ class AutoPilot(object):
 
     def _pilot(self, deviation):
         if -5 <= deviation <= 5:
-            self.motor.run(0, 25, 25)
-        elif -5 <= deviation < -10:
-           self.motor.left(0, right_speed=10)
+            self.motor.run(0.1, 65, 65)
+        elif -5 < deviation <= -10:
+           self.motor.left_run(0.08, left_speed=50, right_speed=60)
         elif -20 <= deviation < -10:
-            self.motor.left(0, right_speed=20)
+            self.motor.left_run(0.06, left_speed=30, right_speed=60)
         elif deviation < -20:
-            self.motor.left(0, right_speed=30)
+            self.motor.left_run(0.04, left_speed=20, right_speed=60)
         elif 5 < deviation <= 10:
-           self.motor.right(0, left_speed=10)
+           self.motor.right_run(0.1, left_speed=60, right_speed=50)
         elif 10 < deviation <= 20:
-            self.motor.right(0, left_speed=20)
+            self.motor.right_run(0.06, left_speed=60, right_speed=30)
         elif 20 < deviation:
-            self.motor.right(0, left_speed=30)
-        time.sleep(0.05)
-        self.motor.run(0, 25, 25)
-        time.sleep(0.1)
+            self.motor.right_run(0.04, left_speed=60, right_speed=20)
         self.motor.free()
 
     def _run(self):
@@ -78,9 +75,11 @@ class AutoPilot(object):
             counter += 1;
             try:
                 deviation = self.camera.analyze()
+                # logging.debug(f'deviation: {deviation}')
+                # self._pilot(deviation)
 
                 dev_cache.append(deviation)
-                if counter >= 5:
+                if counter >= 3:
                     avg_deviation = (sum(dev_cache) - max(dev_cache) - min(dev_cache))/ 3
                     logging.debug(f'avg_deviation: {avg_deviation}')
                     self._pilot(avg_deviation)
