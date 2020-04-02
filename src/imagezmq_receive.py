@@ -28,8 +28,8 @@ import imutils
 import numpy as np
 
 def filter_hsv(frame_hsv):
-    lower = np.array([100, 30, 100])
-    upper = np.array([180, 200, 200])
+    lower = np.array([100, 40, 100])
+    upper = np.array([200, 200, 200])
     mask = cv2.inRange(frame_hsv, lower, upper)
     mask_inv = cv2.bitwise_not(mask)
     frame_output = cv2.bitwise_and(frame_hsv, frame_hsv, mask=mask)

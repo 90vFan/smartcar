@@ -11,12 +11,12 @@ GPIO.setmode(GPIO.BCM)
 # 忽略警告信息
 GPIO.setwarnings(False)
 
-IN1 = 20
-IN2 = 21
-IN3 = 19
-IN4 = 26
-ENA = 16
-ENB = 13
+IN1 = 20    # 左电机前
+IN2 = 21    # 左电机后
+IN3 = 19    # 右电机前
+IN4 = 26    # 右电机后
+ENA = 16    # 左电机转速PWM
+ENB = 13    # 右电机转速PWM
 
 def auto_privilege(func):
     """
@@ -72,36 +72,48 @@ class Motor(object):
 
     #小车前进
     @auto_privilege
-    def run(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def run(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Run forward')
         self.headlight.green()
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.HIGH)
         GPIO.output(IN4, GPIO.LOW)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     #小车后退
     @auto_privilege
-    def back(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def back(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Run backward')
         self.headlight.magenta()
         GPIO.output(IN1, GPIO.LOW)
         GPIO.output(IN2, GPIO.HIGH)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.HIGH)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     #小车左转
     @auto_privilege
-    def left(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def left(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Run left')
         self.headlight.yellow()
         GPIO.output(IN1, GPIO.LOW)
+        GPIO.output(IN2, GPIO.LOW)
+        GPIO.output(IN3, GPIO.HIGH)
+        GPIO.output(IN4, GPIO.LOW)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
+        time.sleep(delaytime)
+
+    @auto_privilege
+    def left_run(self, delaytime=0.1, left_speed=40, right_speed=80, force=False):
+        logging.debug('[Motor] Run left')
+        # self.headlight.yellow()
+        GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.HIGH)
         GPIO.output(IN4, GPIO.LOW)
@@ -111,12 +123,24 @@ class Motor(object):
 
     #小车右转
     @auto_privilege
-    def right(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def right(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Run right')
-        self.headlight.yellow()
+        # self.headlight.yellow()
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
+        GPIO.output(IN4, GPIO.LOW)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
+        time.sleep(delaytime)
+
+    @auto_privilege
+    def right_run(self, delaytime=0.1, left_speed=80, right_speed=40, force=False):
+        logging.debug('[Motor] Run left')
+        self.headlight.yellow()
+        GPIO.output(IN1, GPIO.HIGH)
+        GPIO.output(IN2, GPIO.LOW)
+        GPIO.output(IN3, GPIO.HIGH)
         GPIO.output(IN4, GPIO.LOW)
         GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
         GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
@@ -124,52 +148,52 @@ class Motor(object):
 
     #小车原地左转
     @auto_privilege
-    def spin_left(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def spin_left(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Spin left')
         GPIO.output(IN1, GPIO.LOW)
         GPIO.output(IN2, GPIO.HIGH)
         GPIO.output(IN3, GPIO.HIGH)
         GPIO.output(IN4, GPIO.LOW)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     #小车原地右转
     @auto_privilege
-    def spin_right(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def spin_right(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Spin right')
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.HIGH)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     #小车停止
     @auto_privilege
-    def brake(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def brake(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Brake')
         self.headlight.red()
         GPIO.output(IN1, GPIO.LOW)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     #小车自由停车
     @auto_privilege
-    def free(self, delaytime=0.1, left_speed=80, right_speed=80, force=False):
+    def free(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] free')
         self.headlight.blue()
         GPIO.output(IN1, GPIO.LOW)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
         GPIO.output(IN4, GPIO.LOW)
-        GpioMgmt().pwm_ENA.ChangeDutyCycle(left_speed)
-        GpioMgmt().pwm_ENB.ChangeDutyCycle(right_speed)
+        GpioMgmt().pwm_ENA.ChangeDutyCycle(speed)
+        GpioMgmt().pwm_ENB.ChangeDutyCycle(speed)
         time.sleep(delaytime)
 
     def turn_back(self):
@@ -177,7 +201,7 @@ class Motor(object):
         """
         logging.debug('[Motor] Turn back')
         self.headlight.magenta()
-        self.spin_right(0.2, left_speed=60, right_speed=60)
+        self.spin_right(0.2, speed=60)
         time.sleep(0.01)
 
     def trun_left(self):
@@ -185,7 +209,7 @@ class Motor(object):
         """
         logging.debug('[Motor] Turn left')
         self.headlight.yellow()
-        self.spin_left(0.1, left_speed=60, right_speed=60)
+        self.spin_left(0.1,  speed=60)
         time.sleep(0.01)
 
     def turn_right(self):
@@ -193,5 +217,5 @@ class Motor(object):
         """
         logging.debug('[Motor] Turn right')
         self.headlight.yellow()
-        self.spin_right(0.1, left_speed=60, right_speed=60)
+        self.spin_right(0.1, speed=60)
         time.sleep(0.01)
