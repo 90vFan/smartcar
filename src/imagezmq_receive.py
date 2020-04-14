@@ -28,7 +28,7 @@ import imutils
 import numpy as np
 
 def filter_hsv(frame_hsv):
-    lower = np.array([100, 80, 100])
+    lower = np.array([100, 40, 100])
     upper = np.array([200, 200, 200])
     mask = cv2.inRange(frame_hsv, lower, upper)
     mask_inv = cv2.bitwise_not(mask)
