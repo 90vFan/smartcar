@@ -25,6 +25,10 @@ class DotDict(dict):
     __delattr__ = dict.__delitem__
 
 
+class StopCarException(Exception):
+    """Stop car for debuggings""" 
+
+
 class AutoPilot(object):
     def __init__(self):
         self.init_motor()
@@ -50,46 +54,59 @@ class AutoPilot(object):
         self.ultrasonic = Ultrasonic()
 
     def _pilot(self, deviation):
+        t = 0.1
         if -5 <= deviation <= 5:
-            self.motor.run(0.1, 65, 65)
-        elif -5 < deviation <= -10:
-           self.motor.left_run(0.08, left_speed=50, right_speed=60)
+            self.motor.run(t, 20, 20)
+        elif -10 <= deviation < -5:
+           self.motor.left_run(t, left_speed=15, right_speed=20)
         elif -20 <= deviation < -10:
-            self.motor.left_run(0.06, left_speed=30, right_speed=60)
+            self.motor.left_run(t, left_speed=5, right_speed=20)
         elif deviation < -20:
-            self.motor.left_run(0.04, left_speed=20, right_speed=60)
+            self.motor.left_run(t, left_speed=1, right_speed=20)
         elif 5 < deviation <= 10:
-           self.motor.right_run(0.1, left_speed=60, right_speed=50)
+           self.motor.right_run(t, left_speed=20, right_speed=15)
         elif 10 < deviation <= 20:
-            self.motor.right_run(0.06, left_speed=60, right_speed=30)
+            self.motor.right_run(t, left_speed=20, right_speed=5)
         elif 20 < deviation:
-            self.motor.right_run(0.04, left_speed=60, right_speed=20)
+            self.motor.right_run(t, left_speed=20, right_speed=1)
         self.motor.free()
+        #time.sleep(0.1)
 
     def _run(self):
         debug = 0
         counter = 0
         dev_cache = []
-        while self.camera.cap.isOpened():
+        momentum = 0
+        dev_m = 0
+        cache_len = 0
 
-            counter += 1;
+        while self.camera.cap.isOpened():
+            counter += 1
             try:
+                start = time.time()
                 deviation = self.camera.analyze()
                 # logging.debug(f'deviation: {deviation}')
                 # self._pilot(deviation)
+                if len(dev_cache) == 0:
+                    avg_deviation = deviation
+                if abs(deviation - avg_deviation) < 20:
+                    dev_cache.append(deviation)
 
-                dev_cache.append(deviation)
-                if counter >= 3:
-                    avg_deviation = (sum(dev_cache) - max(dev_cache) - min(dev_cache))/ 3
-                    logging.debug(f'avg_deviation: {avg_deviation}')
-                    self._pilot(avg_deviation)
+                if len(dev_cache) >= 3:
                     counter = 0
-                    dev_cache = []
+                    end = time.time()
+                    delta = end - start
+                    logging.debug(f'analyze 3 times: {delta:.3f}s')
+
+                    avg_deviation = sum(dev_cache) / len(dev_cache)
+                    dev_m = (0.3*dev_m + avg_deviation) / 1.3
+                    logging.info(f'deviation momentum: {dev_m}')
+                    self._pilot(dev_m)
             except KeyboardInterrupt as e:
-                time.sleep(5)
                 counter = 0
                 dev_cache = []
-                continue
+                time.sleep(20)
+                break
 
     def run(self):
         try:
@@ -97,10 +114,10 @@ class AutoPilot(object):
             GpioMgmt().init_pwm()
             # self.ultrasonic.init_pwm()
             self._run()
-        #except KeyboardInterrupt as e:
-        #    GpioMgmt().release()
-        #    logging.info("[+] Exiting")
-        #    raise e
+        except KeyboardInterrupt as e:
+           GpioMgmt().release()
+           logging.info("[+] Exiting")
+           raise e
         except Exception as e:
             GpioMgmt().init_pin()
             logging.error(str(e))

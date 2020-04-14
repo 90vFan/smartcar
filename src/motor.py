@@ -125,7 +125,7 @@ class Motor(object):
     @auto_privilege
     def right(self, delaytime=0.1, speed=65, force=False):
         logging.debug('[Motor] Run right')
-        # self.headlight.yellow()
+        self.headlight.yellow()
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.LOW)
@@ -136,8 +136,8 @@ class Motor(object):
 
     @auto_privilege
     def right_run(self, delaytime=0.1, left_speed=80, right_speed=40, force=False):
-        logging.debug('[Motor] Run left')
-        self.headlight.yellow()
+        logging.debug('[Motor] Run right')
+        #self.headlight.yellow()
         GPIO.output(IN1, GPIO.HIGH)
         GPIO.output(IN2, GPIO.LOW)
         GPIO.output(IN3, GPIO.HIGH)
